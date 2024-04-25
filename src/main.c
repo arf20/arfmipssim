@@ -23,11 +23,30 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+
+#include "types.h"
+#include "loader.h"
 
 void
 usage(const char *name) {
     fprintf(stderr, "Usage: %s [options] basename\nOptions\n"
     "  -g\tGraphical visualization\n", name);
+}
+
+char *
+read_whole_file(FILE *f, size_t *sz) {
+    fseek(f, 0, SEEK_END);
+    *sz = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    char *buff = malloc(*sz);
+    fread(buff, *sz, 1, f);
+
+    fclose(f);
+
+    return buff;
 }
 
 int
@@ -39,7 +58,7 @@ main(int argc, char **argv) {
 
     /* Command line options */
     int graphic = 0;
-    const char *in;
+    const char *in = NULL;
 
     for (int i = 1; i < argc; i++) {
         if (argv[i][0] == '-') {
@@ -56,7 +75,49 @@ main(int argc, char **argv) {
         }
     }
 
+    if (!in) {
+        usage(*argv);
+        return 1;
+    }
 
-    
+    char fnbuff[256];
 
+    /* Load input */
+    symbol_table_t symbols;
+    segment_t segments[2];
+
+    strncpy(fnbuff, in, 256);
+    strncat(fnbuff, ".data", 255);
+    FILE *dataf = fopen(fnbuff, "r");
+    if (!dataf) {
+        fprintf(stderr, "Cannot open data segment %s: %s\n", fnbuff,
+            strerror(errno));
+        return 1;
+    }
+    segments[SEG_DATA].data = read_whole_file(dataf, &segments[SEG_DATA].size);
+
+    strncpy(fnbuff, in, 256);
+    strncat(fnbuff, ".text", 255);
+    FILE *textf = fopen(fnbuff, "r");
+    if (!dataf) {
+        fprintf(stderr, "Cannot open text segment %s: %s\n", fnbuff,
+            strerror(errno));
+        return 1;
+    }
+    segments[SEG_TEXT].data = read_whole_file(textf, &segments[SEG_TEXT].size);
+
+    printf("Loaded %s with %dB of .data and %dB of .text\n", in,
+        segments[SEG_DATA].size, segments[SEG_TEXT].size);
+
+    strncpy(fnbuff, in, 256);
+    strncat(fnbuff, ".sym", 255);
+    FILE *symf = fopen(fnbuff, "r");
+    size_t symfs;
+    if (symf) {
+        char *symfc = read_whole_file(symf, &symfs);
+        load_symbols(symfc, symfs, &symbols);
+        free(symfc);
+    }
+
+    printf("Loaded %d symbols\n", symbols.size);
 }

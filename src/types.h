@@ -28,6 +28,8 @@ typedef uint32_t addr_t;
 typedef uint32_t word_t;
 typedef uint8_t reg_t;
 
+typedef enum { SEG_DATA, SEG_TEXT } segid_t;
+
 typedef struct {
     addr_t address;
     char *label;
@@ -38,5 +40,11 @@ typedef struct {
     size_t size;
     size_t capacity;
 } symbol_table_t;
+
+typedef struct {
+    segid_t id;
+    uint8_t *data;
+    size_t size;
+} segment_t;
 
 #endif /* _TYPES_H */

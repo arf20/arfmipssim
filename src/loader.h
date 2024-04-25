@@ -21,6 +21,6 @@
 #ifndef _LOADER_H
 #define _LOADER_H
 
-
+void load_symbols(const char *str, size_t len, symbol_table_t *st);
 
 #endif /* _LOADER_H */

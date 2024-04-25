@@ -22,6 +22,8 @@
 
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "types.h"
 
@@ -40,8 +42,19 @@ symbol_table_push(symbol_table_t *st, symbol_t sym) {
 
 
 void
-load_symbols(const char *str, symbol_table_t *st) {
+load_symbols(const char *str, size_t len, symbol_table_t *st) {
     symbol_t s;
-    
-    
+    const char *ptr = str;
+    while (ptr && *ptr && ptr - str < len) {
+        const char *colon = strchr(ptr, ':');
+        if (!colon) break;
+        size_t labellen = colon - ptr;
+        s.label = malloc(labellen + 1);
+        strncpy(s.label, ptr, labellen);
+        ptr = colon + 1;
+        s.address = strtol(ptr, NULL, 16);
+        ptr = strchr(ptr, '\n');
+
+        symbol_table_push(st, s);
+    }
 }
