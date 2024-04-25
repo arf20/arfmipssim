@@ -21,6 +21,9 @@
 #ifndef _LOADER_H
 #define _LOADER_H
 
+symbol_table_t *symbol_table_new();
+void symbol_table_destroy(symbol_table_t *st);
+
 void load_symbols(const char *str, size_t len, symbol_table_t *st);
 
 #endif /* _LOADER_H */

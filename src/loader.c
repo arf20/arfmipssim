@@ -29,6 +29,26 @@
 
 #include "loader.h"
 
+
+symbol_table_t *
+symbol_table_new() {
+    symbol_table_t *st = malloc(sizeof(symbol_table_t));
+    st->table = malloc(SYMBOL_TABLE_INIT_SIZE * sizeof(symbol_t));
+    st->size = 0;
+    st->capacity = SYMBOL_TABLE_INIT_SIZE;
+    return st;
+}
+
+void
+symbol_table_destroy(symbol_table_t *st) {
+    for (int i = 0; i < st->size; i++)
+        free(st->table[i].label);
+    free(st->table);
+    st->capacity = 0;
+    st->size = 0;
+    free(st);
+}
+
 void
 symbol_table_push(symbol_table_t *st, symbol_t sym) {
     /* Grow table by double */

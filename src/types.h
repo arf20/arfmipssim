@@ -47,4 +47,8 @@ typedef struct {
     size_t size;
 } segment_t;
 
+/* Tunables */
+#define BUFF_SIZE   256
+#define SYMBOL_TABLE_INIT_SIZE  16  /* symbols */
+
 #endif /* _TYPES_H */

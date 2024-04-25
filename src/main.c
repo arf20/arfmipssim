@@ -83,7 +83,7 @@ main(int argc, char **argv) {
     char fnbuff[256];
 
     /* Load input */
-    symbol_table_t symbols;
+    symbol_table_t *symbols = symbol_table_new();
     segment_t segments[2];
 
     strncpy(fnbuff, in, 256);
@@ -115,9 +115,17 @@ main(int argc, char **argv) {
     size_t symfs;
     if (symf) {
         char *symfc = read_whole_file(symf, &symfs);
-        load_symbols(symfc, symfs, &symbols);
+        load_symbols(symfc, symfs, symbols);
         free(symfc);
     }
 
-    printf("Loaded %d symbols\n", symbols.size);
+    printf("Loaded %d symbols\n", symbols->size);
+
+
+
+    /* Deinit */
+
+    free(segments[SEG_DATA].data);
+    free(segments[SEG_TEXT].data);
+    symbol_table_destroy(symbols);
 }
