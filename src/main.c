@@ -35,20 +35,6 @@ usage(const char *name) {
     "  -g\tGraphical visualization\n", name);
 }
 
-char *
-read_whole_file(FILE *f, size_t *sz) {
-    fseek(f, 0, SEEK_END);
-    *sz = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    char *buff = malloc(*sz);
-    fread(buff, *sz, 1, f);
-
-    fclose(f);
-
-    return buff;
-}
-
 int
 main(int argc, char **argv) {
     if (argc < 2) {
@@ -94,7 +80,6 @@ main(int argc, char **argv) {
             strerror(errno));
         return 1;
     }
-    segments[SEG_DATA].data = read_whole_file(dataf, &segments[SEG_DATA].size);
 
     strncpy(fnbuff, in, 256);
     strncat(fnbuff, ".text", 255);
@@ -104,7 +89,8 @@ main(int argc, char **argv) {
             strerror(errno));
         return 1;
     }
-    segments[SEG_TEXT].data = read_whole_file(textf, &segments[SEG_TEXT].size);
+
+    load_segments(dataf, textf, segments);
 
     printf("Loaded %s with %dB of .data and %dB of .text\n", in,
         segments[SEG_DATA].size, segments[SEG_TEXT].size);
@@ -112,11 +98,8 @@ main(int argc, char **argv) {
     strncpy(fnbuff, in, 256);
     strncat(fnbuff, ".sym", 255);
     FILE *symf = fopen(fnbuff, "r");
-    size_t symfs;
     if (symf) {
-        char *symfc = read_whole_file(symf, &symfs);
-        load_symbols(symfc, symfs, symbols);
-        free(symfc);
+        load_symbols(symf, symbols);
     }
 
     printf("Loaded %d symbols\n", symbols->size);
@@ -124,7 +107,6 @@ main(int argc, char **argv) {
 
 
     /* Deinit */
-
     free(segments[SEG_DATA].data);
     free(segments[SEG_TEXT].data);
     symbol_table_destroy(symbols);

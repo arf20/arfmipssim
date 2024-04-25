@@ -29,7 +29,6 @@
 
 #include "loader.h"
 
-
 symbol_table_t *
 symbol_table_new() {
     symbol_table_t *st = malloc(sizeof(symbol_table_t));
@@ -60,9 +59,26 @@ symbol_table_push(symbol_table_t *st, symbol_t sym) {
     st->table[st->size++] = sym;
 }
 
+char *
+read_whole_file(FILE *f, size_t *sz) {
+    fseek(f, 0, SEEK_END);
+    *sz = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    char *buff = malloc(*sz + 1);
+    fread(buff, *sz, 1, f);
+    buff[*sz] = '\0'; /* C-string */
+
+    fclose(f);
+
+    return buff;
+}
+
 
 void
-load_symbols(const char *str, size_t len, symbol_table_t *st) {
+load_symbols(FILE *symf, symbol_table_t *st) {
+    size_t len;
+    char *str = read_whole_file(symf, &len);
     symbol_t s;
     const char *ptr = str;
     while (ptr && *ptr && ptr - str < len) {
@@ -77,4 +93,12 @@ load_symbols(const char *str, size_t len, symbol_table_t *st) {
 
         symbol_table_push(st, s);
     }
+
+    free(str);
+}
+
+void
+load_segments(FILE *dataf, FILE *textf, segment_t *segs) {
+    segs[SEG_DATA].data = read_whole_file(dataf, &segs[SEG_DATA].size);
+    segs[SEG_TEXT].data = read_whole_file(textf, &segs[SEG_TEXT].size);
 }

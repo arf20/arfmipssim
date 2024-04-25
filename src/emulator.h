@@ -18,14 +18,17 @@
 
 */
 
-#ifndef _LOADER_H
-#define _LOADER_H
+#ifndef _EMULATOR_H
+#define _EMULATOR_H
 
-symbol_table_t *symbol_table_new();
-void symbol_table_destroy(symbol_table_t *st);
+#include "types.h"
 
-void load_symbols(FILE *symf, symbol_table_t *st);
+#define ORG_DATA    0x10010000
+#define ORG_TEXT    0x00400000
 
-void load_segments(FILE *dataf, FILE *textf, segment_t *segs);
+typedef struct {
+    segment_t data;
+    segment_t text;
+} machine_t;
 
-#endif /* _LOADER_H */
+#endif /* _EMULATOR_H */
