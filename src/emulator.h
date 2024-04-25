@@ -28,23 +28,29 @@
 
 typedef struct {
     union {
-        int32_t bank[32]; /* index bank access */
+        word_t bank[32]; /* index bank access */
         struct {
-            uint32_t /* register names */
+            word_t /* register names */
               zero, at, v0, v1, a0, a1, a2, a3,
                 t0, t1, t2, t3, t4, t5, t6, t7,
-                s0, s1, s2, s3, s4, s5, s6, s6,
+                s0, s1, s2, s3, s4, s5, s6, s7,
                 t8, t9, k0, k1, gp, sp, fp, ra;
         };
     };
-    uint32_t pc; /* Program Counter is a special separate register in the CPU */
+    addr_t pc; /* Program Counter is a special separate register in the CPU */
 } registers_t;
 
 typedef struct {
     segment_t *segs;
     registers_t *regs;
     uint64_t cycle_c; /* cycle counter */
+    uint64_t inst_c;  /* instruction counter */
 } machine_t;
+
+
+machine_t *machine_new(segment_t *segs);
+void machine_destroy(machine_t *m);
+void machine_step(machine_t *m);
 
 
 #endif /* _EMULATOR_H */

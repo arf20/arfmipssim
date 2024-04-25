@@ -28,6 +28,7 @@
 
 #include "types.h"
 #include "loader.h"
+#include "emulator.h"
 
 void
 usage(const char *name) {
@@ -69,7 +70,6 @@ main(int argc, char **argv) {
     char fnbuff[256];
 
     /* Load input */
-    symbol_table_t *symbols = symbol_table_new();
     segment_t segments[2];
 
     strncpy(fnbuff, in, 256);
@@ -95,19 +95,27 @@ main(int argc, char **argv) {
     printf("Loaded %s with %dB of .data and %dB of .text\n", in,
         segments[SEG_DATA].size, segments[SEG_TEXT].size);
 
+    symbol_table_t *symbols = NULL;
     strncpy(fnbuff, in, 256);
     strncat(fnbuff, ".sym", 255);
     FILE *symf = fopen(fnbuff, "r");
     if (symf) {
+        symbols = symbol_table_new();
         load_symbols(symf, symbols);
     }
 
     printf("Loaded %d symbols\n", symbols->size);
 
+    machine_t *m = machine_new(segments);
 
+    machine_step(m);
 
     /* Deinit */
+    machine_destroy(m);
     free(segments[SEG_DATA].data);
     free(segments[SEG_TEXT].data);
-    symbol_table_destroy(symbols);
+    if (symf)
+        symbol_table_destroy(symbols);
+
+    return 0;
 }
