@@ -38,6 +38,9 @@ typedef struct {
         };
     };
     addr_t pc; /* Program Counter is a special separate register in the CPU */
+    struct {
+        int overflow, zero; /* ALU flags (overflow unused) */
+    } flags;
 } registers_t;
 
 typedef struct {

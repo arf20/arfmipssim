@@ -24,39 +24,9 @@
 #include <string.h>
 
 #include "types.h"
+#include "idecode.h"
 
 #include "emulator.h"
-
-typedef struct {
-    union {
-        word_t instruction;
-        struct {
-            /* All */
-            union {
-                struct {
-                    union {
-                        struct {
-                            /* R */
-                            uint8_t func : 6;
-                            uint8_t shamt : 5;
-                            uint8_t rd : 5;                            
-                        };
-                        struct {
-                            /* I */
-                            int16_t imm;
-                        };
-                    };
-                    /* R or I */
-                    uint8_t rt : 5;
-                    uint8_t rs : 5;
-                };
-                /* J */
-                uint32_t j : 26;
-            };
-            uint8_t op : 6;
-        };
-    };
-} instruction_t;
 
 machine_t *
 machine_new(segment_t *segs) {
@@ -82,21 +52,56 @@ void
 machine_step(machine_t *m) {
     int ic = 0; /* instruction cycle */
 
-    instruction_t IR;
+    word_t IR;
     word_t MDR, A, B, ALUOut;
 
 
     /* Cycle 0 */
     /*   Fetch */
-    IR.instruction = *(word_t*)&m->segs[SEG_TEXT].data[m->regs->pc - ORG_TEXT];
+    IR = *(word_t*)&m->segs[SEG_TEXT].data[m->regs->pc - ORG_TEXT];
     /*   Increment PC */
     m->regs->pc += 4;
-
     ic++;
 
     /* Cycle 1 */
     /*   Read register bank speculatively */
-    A = m->regs->bank[IR.rs];
-    B = m->regs->bank[IR.rt];
+    A = m->regs->bank[get_rs(IR)];
+    B = m->regs->bank[get_rt(IR)];
+    ic++;
 
+    /* Cycle 2 */
+    switch (get_op(IR)) {
+        case OP_ALU: {
+            /* Execute ALU operation */
+            switch (get_func(IR)) {
+                case FUNC_AND: ALUOut = A & B; break;
+                case FUNC_OR : ALUOut = A | B; break;
+                case FUNC_ADD: ALUOut = A + B; break;
+                case FUNC_SUB: ALUOut = A - B; break;
+                case FUNC_SLT: ALUOut = A < B; break;
+            }
+
+            /* Flags */
+            int addfun = FUNC_ADD || FUNC_SUB;
+            m->regs->flags.overflow = 
+              !addfun && !get_msb(A) && !get_msb(B) &&  get_msb(ALUOut) 
+            | !addfun &&  get_msb(A) &&  get_msb(B) && !get_msb(ALUOut)
+            |  addfun && !get_msb(A) &&  get_msb(B) &&  get_msb(ALUOut) 
+            |  addfun &&  get_msb(A) && !get_msb(B) && !get_msb(ALUOut);
+
+            m->regs->flags.zero = ALUOut == 0; 
+        } break;
+    }
+    ic++;
+
+    /* Cycle 3 */
+    switch (get_op(IR)) {
+        case OP_ALU: {
+            m->regs->bank[get_rd(IR)] = ALUOut;
+            ic++;
+        } break;
+    }
+
+    m->cycle_c += ic;
+    m->inst_c++;
 }
