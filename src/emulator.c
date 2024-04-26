@@ -32,6 +32,7 @@ machine_t *
 machine_new(segment_t *segs) {
     machine_t *m = malloc(sizeof(machine_t));
     m->cycle_c = 0;
+    m->inst_c = 0;
     /* Alloc and init register bank */
     m->regs = malloc(sizeof(registers_t));
     memset(m->regs, 0, sizeof(registers_t));
@@ -48,12 +49,23 @@ machine_destroy(machine_t *m) {
     free(m);
 }
 
+int
+addr_check(addr_t a, machine_t *m) {
+    if (a < ORG_DATA || a > ORG_DATA + m->segs[SEG_DATA].size) {
+        /* Segmentation fault */
+        return -1;
+    } else if (a % 4) {
+        /* Unaligned access */
+        return -1;
+    }
+}
+
 void
 machine_step(machine_t *m) {
     int ic = 0; /* instruction cycle */
 
     word_t IR;
-    word_t MDR, A, B, ALUOut;
+    int32_t MDR, A, B, ALUOut;
 
 
     /* Cycle 0 */
@@ -91,6 +103,22 @@ machine_step(machine_t *m) {
 
             m->regs->flags.zero = ALUOut == 0; 
         } break;
+        case OP_ORI: {
+            /* Immediate OR */
+            ALUOut = A | get_imm(IR);
+        } break;
+        case OP_LW: {
+            /* Source address */
+            ALUOut = (addr_t)A + get_imm(IR);
+        } break;
+        case OP_SW: {
+            /* Destination address */
+            ALUOut = (addr_t)B + get_imm(IR);
+        } break;
+        case OP_LUI: {
+            /* Write immediate */
+            m->regs->bank[get_rt(IR)] = get_imm(IR);
+        } break;
     }
     ic++;
 
@@ -98,6 +126,28 @@ machine_step(machine_t *m) {
     switch (get_op(IR)) {
         case OP_ALU: {
             m->regs->bank[get_rd(IR)] = ALUOut;
+            ic++;
+        } break;
+        case OP_ORI: {
+            m->regs->bank[get_rt(IR)] = ALUOut;
+            ic++;
+        } break;
+        case OP_LW: {
+            addr_check(ALUOut, m);
+            MDR = *(word_t*)&m->segs[SEG_DATA].data[(addr_t)ALUOut];
+            ic++;
+        } break;
+        case OP_SW: {
+            addr_check(ALUOut, m);
+            *(word_t*)&m->segs[SEG_DATA].data[(addr_t)ALUOut] = A;
+            ic++;
+        } break;
+    }
+
+    /* Cycle 4 */
+    switch (get_op(IR)) {
+        case OP_LW: {
+            m->regs->bank[get_rt(IR)] = MDR;
             ic++;
         } break;
     }

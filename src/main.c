@@ -108,7 +108,9 @@ main(int argc, char **argv) {
 
     machine_t *m = machine_new(segments);
 
-    machine_step(m);
+    while (m->regs->pc - ORG_TEXT < segments[SEG_TEXT].size) {
+        machine_step(m);
+    }
 
     /* Deinit */
     machine_destroy(m);

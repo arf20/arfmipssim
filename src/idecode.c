@@ -52,7 +52,7 @@ get_func(word_t i) {
     return (i & 0b00000000000000000000000000111111) >> 0;
 }
 
-uint16_t
+int16_t
 get_imm(word_t i) {
     return (i & 0b00000000000000001111111111111111) >> 0;
 }

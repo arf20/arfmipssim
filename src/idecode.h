@@ -27,7 +27,7 @@ typedef enum {
     OP_ORI = 0b001101,
     OP_LW  = 0b100011,
     OP_SW  = 0b101011,
-    OP_LUI = 0b100011,
+    OP_LUI = 0b001111,
     OP_BEQ = 0b000100,
     OP_J   = 0b000010
 } op_t;
@@ -46,7 +46,7 @@ uint8_t get_rt(word_t i);
 uint8_t get_rd(word_t i);
 uint8_t get_shamt(word_t i);
 func_t get_func(word_t i);
-uint16_t get_imm(word_t i);
+int16_t get_imm(word_t i);
 uint32_t get_j(word_t i);
 
 int get_msb(word_t w);
