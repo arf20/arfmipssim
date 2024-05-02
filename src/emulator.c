@@ -79,6 +79,8 @@ machine_step(machine_t *m) {
     /*   Read register bank speculatively */
     A = m->regs->bank[get_rs(IR)];
     B = m->regs->bank[get_rt(IR)];
+    /*   Calculate jump address specilatively */
+    ALUOut = m->regs->pc + get_imm(IR) << 2;
     ic++;
 
     /* Cycle 2 */
@@ -118,6 +120,11 @@ machine_step(machine_t *m) {
         case OP_LUI: {
             /* Write immediate */
             m->regs->bank[get_rt(IR)] = get_imm(IR);
+        } break;
+        case OP_BEQ: {
+            if (A == B)
+                /* Address calculated speculatively in Cycle 1 */
+                m->regs->pc = ALUOut;
         } break;
     }
     ic++;
