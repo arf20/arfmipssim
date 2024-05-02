@@ -37,12 +37,17 @@ typedef struct {
                 t8, t9, k0, k1, gp, sp, fp, ra;
         };
     };
-    addr_t pc; /* Program Counter is a special separate register in the CPU */
+    addr_t pc;  /* Program Counter is a special separate register in the CPU */
+    word_t ir,  /* Instruction Register */
+        a, b,   /* Values from register bank */
+        mdr,    /* Memory Data Register, read from memory */
+        aluout; /* ALU accumulator */
     struct {
         int overflow, zero; /* ALU flags (overflow unused) */
     } flags;
 } registers_t;
 
+/* This represents de state of the CPU */
 typedef struct {
     segment_t *segs;
     registers_t *regs;
@@ -50,10 +55,11 @@ typedef struct {
     uint64_t inst_c;  /* instruction counter */
 } machine_t;
 
+typedef enum { EXCEPT_UNKNOWN_OP } except_t;
 
 machine_t *machine_new(segment_t *segs);
 void machine_destroy(machine_t *m);
-void machine_step(machine_t *m);
+except_t machine_step(machine_t *m);
 
 
 #endif /* _EMULATOR_H */

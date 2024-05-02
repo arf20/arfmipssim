@@ -60,101 +60,105 @@ addr_check(addr_t a, machine_t *m) {
     }
 }
 
-void
+except_t
 machine_step(machine_t *m) {
     int ic = 0; /* instruction cycle */
 
-    word_t IR;
-    int32_t MDR, A, B, ALUOut;
-
-
     /* Cycle 0 */
     /*   Fetch */
-    IR = *(word_t*)&m->segs[SEG_TEXT].data[m->regs->pc - ORG_TEXT];
+    m->regs->ir = *(word_t*)&m->segs[SEG_TEXT].data[m->regs->pc - ORG_TEXT];
     /*   Increment PC */
     m->regs->pc += 4;
     ic++;
 
     /* Cycle 1 */
     /*   Read register bank speculatively */
-    A = m->regs->bank[get_rs(IR)];
-    B = m->regs->bank[get_rt(IR)];
+    m->regs->a = m->regs->bank[get_rs(m->regs->ir)];
+    m->regs->b = m->regs->bank[get_rt(m->regs->ir)];
     /*   Calculate jump address specilatively */
-    ALUOut = m->regs->pc + get_imm(IR) << 2;
+    m->regs->aluout = m->regs->pc + get_imm(m->regs->ir) << 2;
     ic++;
 
     /* Cycle 2 */
-    switch (get_op(IR)) {
+    switch (get_op(m->regs->ir)) {
         case OP_ALU: {
             /* Execute ALU operation */
-            switch (get_func(IR)) {
-                case FUNC_AND: ALUOut = A & B; break;
-                case FUNC_OR : ALUOut = A | B; break;
-                case FUNC_ADD: ALUOut = A + B; break;
-                case FUNC_SUB: ALUOut = A - B; break;
-                case FUNC_SLT: ALUOut = A < B; break;
+            switch (get_func(m->regs->ir)) {
+                case FUNC_AND: m->regs->aluout = m->regs->a & m->regs->b; break;
+                case FUNC_OR : m->regs->aluout = m->regs->a | m->regs->b; break;
+                case FUNC_ADD: m->regs->aluout = m->regs->a + m->regs->b; break;
+                case FUNC_SUB: m->regs->aluout = m->regs->a - m->regs->b; break;
+                case FUNC_SLT: m->regs->aluout = m->regs->a < m->regs->b; break;
             }
 
             /* Flags */
             int addfun = FUNC_ADD || FUNC_SUB;
             m->regs->flags.overflow = 
-              !addfun && !get_msb(A) && !get_msb(B) &&  get_msb(ALUOut) 
-            | !addfun &&  get_msb(A) &&  get_msb(B) && !get_msb(ALUOut)
-            |  addfun && !get_msb(A) &&  get_msb(B) &&  get_msb(ALUOut) 
-            |  addfun &&  get_msb(A) && !get_msb(B) && !get_msb(ALUOut);
+              !addfun && !get_msb(m->regs->a) && !get_msb(m->regs->b) &&  get_msb(m->regs->aluout) 
+            | !addfun &&  get_msb(m->regs->a) &&  get_msb(m->regs->b) && !get_msb(m->regs->aluout)
+            |  addfun && !get_msb(m->regs->a) &&  get_msb(m->regs->b) &&  get_msb(m->regs->aluout) 
+            |  addfun &&  get_msb(m->regs->a) && !get_msb(m->regs->b) && !get_msb(m->regs->aluout);
 
-            m->regs->flags.zero = ALUOut == 0; 
+            m->regs->flags.zero = m->regs->aluout == 0; 
         } break;
         case OP_ORI: {
             /* Immediate OR */
-            ALUOut = A | get_imm(IR);
+            m->regs->aluout = m->regs->a | get_imm(m->regs->ir);
         } break;
         case OP_LW: {
             /* Source address */
-            ALUOut = (addr_t)A + get_imm(IR);
+            m->regs->aluout = (addr_t)m->regs->a + get_imm(m->regs->ir);
         } break;
         case OP_SW: {
             /* Destination address */
-            ALUOut = (addr_t)B + get_imm(IR);
+            m->regs->aluout = (addr_t)m->regs->b + get_imm(m->regs->ir);
         } break;
         case OP_LUI: {
             /* Write immediate */
-            m->regs->bank[get_rt(IR)] = get_imm(IR);
+            m->regs->bank[get_rt(m->regs->ir)] = get_imm(m->regs->ir);
         } break;
         case OP_BEQ: {
-            if (A == B)
+            if (m->regs->a == m->regs->b)
                 /* Address calculated speculatively in Cycle 1 */
-                m->regs->pc = ALUOut;
+                m->regs->pc = m->regs->aluout;
         } break;
+        case OP_J: {
+            if (m->regs->a == m->regs->b)
+                /* Address calculated speculatively in Cycle 1 */
+                m->regs->pc = get_imm(m->regs->ir) << 2;
+        } break;
+        default: {
+            return EXCEPT_UNKNOWN_OP;
+        }
     }
     ic++;
 
     /* Cycle 3 */
-    switch (get_op(IR)) {
+    switch (get_op(m->regs->ir)) {
         case OP_ALU: {
-            m->regs->bank[get_rd(IR)] = ALUOut;
+            m->regs->bank[get_rd(m->regs->ir)] = m->regs->aluout;
             ic++;
         } break;
         case OP_ORI: {
-            m->regs->bank[get_rt(IR)] = ALUOut;
+            m->regs->bank[get_rt(m->regs->ir)] = m->regs->aluout;
             ic++;
         } break;
         case OP_LW: {
-            addr_check(ALUOut, m);
-            MDR = *(word_t*)&m->segs[SEG_DATA].data[(addr_t)ALUOut];
+            addr_check(m->regs->aluout, m);
+            m->regs->mdr = *(word_t*)&m->segs[SEG_DATA].data[(addr_t)m->regs->aluout];
             ic++;
         } break;
         case OP_SW: {
-            addr_check(ALUOut, m);
-            *(word_t*)&m->segs[SEG_DATA].data[(addr_t)ALUOut] = A;
+            addr_check(m->regs->aluout, m);
+            *(word_t*)&m->segs[SEG_DATA].data[(addr_t)m->regs->aluout] = m->regs->a;
             ic++;
         } break;
     }
 
     /* Cycle 4 */
-    switch (get_op(IR)) {
+    switch (get_op(m->regs->ir)) {
         case OP_LW: {
-            m->regs->bank[get_rt(IR)] = MDR;
+            m->regs->bank[get_rt(m->regs->ir)] = m->regs->mdr;
             ic++;
         } break;
     }
