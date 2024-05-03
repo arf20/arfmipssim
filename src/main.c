@@ -29,6 +29,7 @@
 #include "types.h"
 #include "loader.h"
 #include "emulator.h"
+#include "idecode.h"
 
 void
 usage(const char *name) {
@@ -109,7 +110,45 @@ main(int argc, char **argv) {
     machine_t *m = machine_new(segments);
 
     while (m->regs->pc - ORG_TEXT < segments[SEG_TEXT].size) {
-        machine_step(m);
+        except_t e = machine_step(m);
+
+        printf("Executing 0x%.8x at 0x%.8x: ", m->regs->ir, m->regs->pc - 4);
+
+        printf("%s", op_str(get_op(m->regs->ir)));
+        switch (get_op(m->regs->ir)) {
+            case OP_ALU: {
+                printf("%s ", func_str(get_func(m->regs->ir)));
+                printf("$%s [%d], $%s [%d], $%s [%d]",
+                    reg_str(get_rd(m->regs->ir)), m->regs->aluout,
+                    reg_str(get_rs(m->regs->ir)), m->regs->a,
+                    reg_str(get_rt(m->regs->ir)), m->regs->b);
+            } break;
+            case OP_ORI: {
+                printf("$%s [%d], $%s [%d], %d|0x%.4x",
+                    reg_str(get_rt(m->regs->ir)), m->regs->b,
+                    reg_str(get_rs(m->regs->ir)), m->regs->a,
+                    get_imm(m->regs->ir), get_imm(m->regs->ir));
+            } break;
+            case OP_LW: {
+                printf("$%s [%d], %d($%s [%d])",
+                    reg_str(get_rt(m->regs->ir)), m->regs->b,
+                    get_imm(m->regs->ir),
+                    reg_str(get_rs(m->regs->ir)), m->regs->a);
+            } break;
+            case OP_SW: {
+                printf("$%s [%d], %d($%s [%d])",
+                    reg_str(get_rs(m->regs->ir)), m->regs->a,
+                    get_imm(m->regs->ir),
+                    reg_str(get_rt(m->regs->ir)), m->regs->b);
+            } break;
+        }
+        
+        printf("\n");
+
+        if (e.e != EXCEPT_NO) {
+            printf("Exception at 0x%.8x executing 0x%.8x: %s reason: %d\n",
+                m->regs->pc - 4, m->regs->ir, except_str(e.e), e.why);
+        }
     }
 
     /* Deinit */

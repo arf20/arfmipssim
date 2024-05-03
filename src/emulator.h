@@ -55,7 +55,19 @@ typedef struct {
     uint64_t inst_c;  /* instruction counter */
 } machine_t;
 
-typedef enum { EXCEPT_UNKNOWN_OP } except_t;
+typedef enum {
+    EXCEPT_NO,
+    EXCEPT_UNKNOWN_OP,
+    EXCEPT_OUTOFBOUNDS,
+    EXCEPT_UNALIGNED
+} except_idx_t;
+
+typedef struct {
+    except_idx_t e;
+    word_t why;
+} except_t;
+
+const char *except_str(except_idx_t e);
 
 machine_t *machine_new(segment_t *segs);
 void machine_destroy(machine_t *m);

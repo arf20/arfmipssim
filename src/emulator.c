@@ -22,11 +22,35 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "types.h"
 #include "idecode.h"
 
 #include "emulator.h"
+
+#define CHECK_ADDR(addr) \
+    if (m->regs->aluout - ORG_DATA < 0 || \
+        m->regs->aluout - ORG_DATA > (m->segs[SEG_DATA].size - 1)) \
+    { \
+        return (except_t){ EXCEPT_OUTOFBOUNDS, m->regs->aluout }; \
+    } \
+    if (m->regs->aluout % 4) \
+        return (except_t){ EXCEPT_UNALIGNED, m->regs->aluout }; 
+
+
+const char *
+except_str(except_idx_t e) {
+    static const char *except_strs[] = {
+        "No exception.",
+        "Unknown op.",
+        "Out of bounds memory access.",
+        "Unaligned memory access."
+    };
+
+    return except_strs[e];
+}
+
 
 machine_t *
 machine_new(segment_t *segs) {
@@ -47,17 +71,6 @@ void
 machine_destroy(machine_t *m) {
     free(m->regs);
     free(m);
-}
-
-int
-addr_check(addr_t a, machine_t *m) {
-    if (a < ORG_DATA || a > ORG_DATA + m->segs[SEG_DATA].size) {
-        /* Segmentation fault */
-        return -1;
-    } else if (a % 4) {
-        /* Unaligned access */
-        return -1;
-    }
 }
 
 except_t
@@ -99,7 +112,7 @@ machine_step(machine_t *m) {
             |  addfun && !get_msb(m->regs->a) &&  get_msb(m->regs->b) &&  get_msb(m->regs->aluout) 
             |  addfun &&  get_msb(m->regs->a) && !get_msb(m->regs->b) && !get_msb(m->regs->aluout);
 
-            m->regs->flags.zero = m->regs->aluout == 0; 
+            m->regs->flags.zero = (m->regs->aluout == 0); 
         } break;
         case OP_ORI: {
             /* Immediate OR */
@@ -128,7 +141,7 @@ machine_step(machine_t *m) {
                 m->regs->pc = get_imm(m->regs->ir) << 2;
         } break;
         default: {
-            return EXCEPT_UNKNOWN_OP;
+            return (except_t){ EXCEPT_UNKNOWN_OP, 0 };
         }
     }
     ic++;
@@ -144,13 +157,14 @@ machine_step(machine_t *m) {
             ic++;
         } break;
         case OP_LW: {
-            addr_check(m->regs->aluout, m);
-            m->regs->mdr = *(word_t*)&m->segs[SEG_DATA].data[(addr_t)m->regs->aluout];
+            CHECK_ADDR(m->regs->aluout);
+            m->regs->mdr = *(word_t*)&m->segs[SEG_DATA].data[m->regs->aluout];
             ic++;
         } break;
         case OP_SW: {
-            addr_check(m->regs->aluout, m);
-            *(word_t*)&m->segs[SEG_DATA].data[(addr_t)m->regs->aluout] = m->regs->a;
+            CHECK_ADDR(m->regs->aluout);
+            *(word_t*)&m->segs[SEG_DATA].data[m->regs->aluout - ORG_DATA]
+                = m->regs->a;
             ic++;
         } break;
     }
@@ -165,4 +179,6 @@ machine_step(machine_t *m) {
 
     m->cycle_c += ic;
     m->inst_c++;
+
+    return (except_t){ EXCEPT_NO, 0 };
 }

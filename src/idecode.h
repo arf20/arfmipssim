@@ -51,6 +51,11 @@ uint32_t get_j(word_t i);
 
 int get_msb(word_t w);
 
+const char *op_str(op_t op);
+const char *func_str(func_t func);
+const char *reg_str(uint8_t r);
+
+
 /*
     <                struct                 >       ^
           <        struct            >      ^

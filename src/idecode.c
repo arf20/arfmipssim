@@ -24,7 +24,7 @@
 
 op_t
 get_op(word_t i) {
-    return (i & 0b11111100000000000000000000000000) >> 27;
+    return (i & 0b11111100000000000000000000000000) >> 26;
 }
 
 uint8_t
@@ -66,3 +66,43 @@ int
 get_msb(word_t w) {
     return (w & 0b10000000000000000000000000000000) >> 31;
 }
+
+const char *
+op_str(op_t op) {
+    switch (op) {
+        case OP_ALU: return "";
+        case OP_ORI: return "ori ";
+        case OP_LW: return "lw ";
+        case OP_SW: return "sw ";
+        case OP_LUI: return "lui ";
+        case OP_BEQ: return "beq ";
+        case OP_J: return "j ";
+        default: return "Unknown op.";
+    }
+}
+
+const char *
+func_str(func_t func) {
+    switch (func) {
+        case FUNC_AND: return "and";
+        case FUNC_OR: return "or";
+        case FUNC_ADD: return "add";
+        case FUNC_SUB: return "sub";
+        case FUNC_SLT: return "slt";
+        default: return "Unknown func.";
+    }
+}
+
+const char *
+reg_str(uint8_t r) {
+    static const char *reg_strs[] = {
+        "zero", "at", "v0", "v1", "a0", "a1", "a2", "a3",
+        "t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7",
+        "s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7",
+        "t8", "t9", "k0", "k1", "gp", "sp", "fp", "ra"
+    };
+    if (r >= 0 && r <= 31)
+        return reg_strs[r];
+    else return "Unknown register.";
+}
+
